@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operating system Wheel</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1e1e2f, #2a2a40);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-size: 2rem;
+            text-align: center;
+            color: #4db5ff;
+            text-shadow: 0 0 10px rgba(77, 181, 255, 0.3);
+        }
+
+        .wheel-container {
+            position: relative;
+            width: 360px;
+            height: 360px;
+            margin-bottom: 30px;
+        }
+
+        #wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            box-shadow: 0 0 25px rgba(0, 0, 0, 0.5), 0 0 15px rgba(77, 181, 255, 0.2);
+            transition: transform 4s cubic-bezier(0.15, 0.99, 0.18, 0.99);
+        }
+
+        .pointer {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 18px solid transparent;
+            border-right: 18px solid transparent;
+            border-top: 30px solid #ff4757;
+            z-index: 10;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4));
+        }
+
+        .spin-btn {
+            background: linear-gradient(45deg, #ff4757, #ff6b81);
+            color: white;
+            border: none;
+            padding: 14px 40px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .spin-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 71, 87, 0.6);
+        }
+
+        .spin-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* Modal Popup */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: #252538;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 100%;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid #3d3d5c;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal h2 {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: #ffffff;
+            line-height: 1.4;
+        }
+
+        .options-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .option-btn {
+            background: #32324a;
+            color: #e0e0e0;
+            border: 2px solid #444466;
+            padding: 12px 16px;
+            border-radius: 8px;
+            text-align: left;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            background: #3d3d5c;
+            border-color: #4db5ff;
+        }
+
+        .option-btn.correct {
+            background: #2ed573 !important;
+            border-color: #2ed573 !important;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .option-btn.incorrect {
+            background: #ff4757 !important;
+            border-color: #ff4757 !important;
+            color: #fff;
+        }
+
+        .close-btn {
+            background: #4db5ff;
+            color: #1e1e2f;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .feedback {
+            margin-top: 15px;
+            font-weight: bold;
+            text-align: center;
+            min-height: 24px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Operating System Wheel</h1>
+
+    <div class="wheel-container">
+        <div class="pointer"></div>
+        <canvas id="wheel" width="400" height="400"></canvas>
+    </div>
+
+    <button class="spin-btn" id="spinBtn">SPIN THE WHEEL</button>
+
+    <div class="modal" id="quizModal">
+        <div class="modal-content">
+            <h2 id="questionText">Question goes here...</h2>
+            <div class="options-list" id="optionsContainer"></div>
+            <div class="feedback" id="feedbackText"></div>
+            <button class="close-btn" id="closeBtn" style="display:none;" onclick="closeModal()">Next Spin</button>
+        </div>
+    </div>
+
+    <script>
+        const questions = [
+            {
+                label: "Q2",
+                question: "2. Which of the following is an Operating System?",
+                options: ["Microsoft Word", "Paint", "Windows 11", "Chrome"],
+                answer: 2
+            },
+            {
+                label: "Q3",
+                question: "3. What is the main function of an Operating System?",
+                options: ["Playing games", "Managing hardware and software resources", "Printing documents", "Browsing the internet"],
+                answer: 1
+            },
+            {
+                label: "Q4",
+                question: "4. Which Operating System is commonly used on smartphones?",
+                options: ["Android", "PowerPoint", "Excel", "Photoshop"],
+                answer: 0
+            },
+            {
+                label: "Q5",
+                question: "5. Which of the following is an example of system software?",
+                options: ["Microsoft Excel", "Operating System", "Calculator", "Paint"],
+                answer: 1
+            },
+            {
+                label: "Q6",
+                question: "6. Which component manages files and folders?",
+                options: ["File Management System", "Keyboard", "Monitor", "Scanner"],
+                answer: 0
+            },
+            {
+                label: "Q7",
+                question: "7. What does multitasking mean?",
+                options: ["Using multiple computers", "Running several programs at the same time", "Turning off the computer", "Creating multiple files"],
+                answer: 1
+            },
+            {
+                label: "Q8",
+                question: "8. What does GUI stands for?",
+                options: ["Graphical User Interface", "General User Interface", "Graphic Utality Input", "Generic Utality Interface"],
+                answer: 0
+            },
+            {
+                label: "Q9",
+                question: "9. Which type of Operating System allows multiple users to access the system?",
+                options: ["Single-user OS", "Multi-user OS", "Embedded OS", "Mobile OS"],
+                answer: 1
+            },
+            {
+                label: "Q10",
+                question: "10. Which task is performed by the Operating System?",
+                options: ["Memory management", "Writing essays", "Editing videos", "Taking photographs"],
+                answer: 0
+            },
+            {
+                label: "Q11",
+                question: "15. Which is an advantage of GUI over CLI?",
+                options: ["Requires memorizing commands", "Easier for beginners to learn and use", "Uses less computer memory", "Only works with a keyboard"],
+                answer: 1
+            },
+        ];
+
+        const colors = [
+            "#ff4757", "#ffa502", "#2ed573", "#1e90ff", 
+            "#3742fa", "#9b59b6", "#eccc68", "#70a1ff", "#ff6b81"
+        ];
+
+        const canvas = document.getElementById("wheel");
+        const ctx = canvas.getContext("2d");
+        const spinBtn = document.getElementById("spinBtn");
+        const modal = document.getElementById("quizModal");
+        
+        const numSegments = questions.length;
+        const sliceAngle = (2 * Math.PI) / numSegments;
+        let currentRotation = 0;
+
+        function drawWheel() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = canvas.width / 2 - 10;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < numSegments; i++) {
+                const angle = i * sliceAngle;
+                
+                // Draw slice
+                ctx.beginPath();
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, angle, angle + sliceAngle);
+                ctx.closePath();
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = "#1e1e2f";
+                ctx.stroke();
+
+                // Draw Text
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(angle + sliceAngle / 2);
+                ctx.textAlign = "right";
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "bold 18px Segoe UI";
+                ctx.fillText(questions[i].label, radius - 20, 6);
+                ctx.restore();
+            }
+        }
+
+        drawWheel();
+
+        spinBtn.addEventListener("click", () => {
+            spinBtn.disabled = true;
+            
+            // Random spin between 5 and 10 full turns + random segment
+            const extraDegrees = Math.floor(Math.random() * 360);
+            const totalDegrees = 1800 + extraDegrees;
+            currentRotation += totalDegrees;
+
+            canvas.style.transform = `rotate(${currentRotation}deg)`;
+
+            setTimeout(() => {
+                const actualRotation = currentRotation % 360;
+                // Pointer is at top (270 degrees in standard polar, or 0 relative offset)
+                // Normalize angle relative to pointer at top (12 o'clock)
+                const degreesPerSlice = 360 / numSegments;
+                const correctedAngle = (360 - (actualRotation % 360) + 270) % 360;
+                const selectedIndex = Math.floor(correctedAngle / degreesPerSlice) % numSegments;
+
+                openQuiz(questions[selectedIndex]);
+            }, 4000);
+        });
+
+        function openQuiz(q) {
+            document.getElementById("questionText").innerText = q.question;
+            const container = document.getElementById("optionsContainer");
+            const feedback = document.getElementById("feedbackText");
+            const closeBtn = document.getElementById("closeBtn");
+            
+            container.innerHTML = "";
+            feedback.innerText = "";
+            closeBtn.style.display = "none";
+
+            const optionLabels = ["A", "B", "C", "D"];
+
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement("button");
+                btn.className = "option-btn";
+                btn.innerText = `${optionLabels[idx]}. ${opt}`;
+                btn.onclick = () => selectOption(btn, idx, q.answer);
+                container.appendChild(btn);
+            });
+
+            modal.style.display = "flex";
+        }
+
+        function selectOption(selectedBtn, selectedIdx, correctIdx) {
+            const feedback = document.getElementById("feedbackText");
+
+            if (selectedIdx === correctIdx) {
+                selectedBtn.classList.add("correct");
+                selectedBtn.disabled=true;
+                feedback.style.color = "#2ed573";
+                feedback.innerText = "Correct Answer! 🎉";
+                document.getElementById("closeBtn").style.display = "block";
+            } else {
+                selectedBtn.classList.add("incorrect");
+                selectedBtn.disabled=true;
+                feedback.style.color = "#ff4757";
+                feedback.innerText = "Incorrect! Try again";
+            }
+        }
+
+    
+    </script>
+</body>
+</html>
